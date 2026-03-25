@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Knowledge Base — sinhyub</title>
+<style>
+  :root {
+    --text: #1a1a1a;
+    --text-secondary: #555;
+    --bg: #fafafa;
+    --card-bg: #fff;
+    --border: #e5e5e5;
+    --accent: #2563eb;
+    --accent-light: #eff4ff;
+    --tag-bg: #f1f5f9;
+    --tag-text: #475569;
+    --radius: 8px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+  }
+
+  /* Header */
+  header {
+    padding: 3.5rem 0 2rem;
+  }
+  header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+  header p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  /* Search */
+  .search-area {
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    padding: 1rem 0;
+    z-index: 10;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .search-area.scrolled {
+    border-bottom-color: var(--border);
+  }
+  .search-input {
+    width: 100%;
+    padding: 0.7rem 1rem 0.7rem 2.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    font-size: 0.95rem;
+    background: var(--card-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23999' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85zm-5.242.156a5 5 0 1 1 0-10 5 5 0 0 1 0 10z'/%3E%3C/svg%3E") no-repeat 0.8rem center;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+  }
+
+  /* Filters */
+  .filters {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 0 0.5rem;
+    flex-wrap: wrap;
+  }
+  .filter-btn {
+    padding: 0.3rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    background: var(--card-bg);
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Entry list */
+  .entries {
+    padding: 1rem 0 4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .entry-card {
+    display: block;
+    padding: 1.2rem 1rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    margin-bottom: 0.5rem;
+  }
+  .entry-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+  }
+  .entry-card .title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+    letter-spacing: -0.01em;
+  }
+  .entry-card .desc {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.6rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .entry-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .entry-date {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+  }
+  .entry-tag {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    background: var(--tag-bg);
+    color: var(--tag-text);
+    border-radius: 100px;
+  }
+  .entry-category {
+    font-size: 0.72rem;
+    padding: 0.15rem 0.5rem;
+    background: var(--accent-light);
+    color: var(--accent);
+    border-radius: 100px;
+    font-weight: 500;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    display: none;
+  }
+
+  /* Count */
+  .result-count {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 0.25rem 0 0.5rem;
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 2.5rem 0 1.5rem; }
+    header h1 { font-size: 1.4rem; }
+    .entry-card { padding: 1rem 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>Knowledge Base</h1>
+    <p>경험에서 얻은 지식을 보관하고, 필요할 때 꺼내 쓰는 공간</p>
+  </header>
+
+  <div class="search-area" id="searchArea">
+    <input
+      type="text"
+      class="search-input"
+      id="searchInput"
+      placeholder="검색 — 제목, 태그, 내용으로 찾기"
+      autocomplete="off"
+    >
+    <div class="filters" id="filters"></div>
+    <div class="result-count" id="resultCount"></div>
+  </div>
+
+  <div class="entries" id="entries"></div>
+  <div class="empty-state" id="emptyState">검색 결과가 없습니다.</div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+//  지식 카탈로그
+//  새 항목을 추가하려면 아래 배열에 객체를 추가하세요.
+// ──────────────────────────────────────────────
+const ENTRIES = [
+  {
+    title: "인간의 의사결정 기억용량 확장",
+    desc: "의사결정에 필요한 기억 용량의 한계를 이해하고, 이를 확장하기 위한 프레임워크와 실천 방법을 정리한 문서.",
+    url: "enhancers/human-memory-capacity.html",
+    date: "2026-03",
+    category: "사고 도구",
+    tags: ["인지", "의사결정", "기억", "프레임워크"]
+  },
+  {
+    title: "엄밀함의 재배치 — Chad Fowler",
+    desc: "Chad Fowler의 'Relocating Rigor' 번역. 소프트웨어 개발에서 엄밀함이 어디에 배치되어야 하는지에 대한 에세이.",
+    url: "enhancers/relocating-rigor.html",
+    date: "2026-03",
+    category: "에세이",
+    tags: ["소프트웨어", "엔지니어링", "번역", "Chad Fowler"]
+  },
+  {
+    title: "Royal Match vs Royal Kingdom — 비교 분석",
+    desc: "Dream Games의 Royal Match와 Royal Kingdom을 코어 루프, 메타 구조, 수익화 관점에서 비교 분석한 슬라이드.",
+    url: "reports/royalkingdom_2026-03-12.html",
+    date: "2026-03-12",
+    category: "게임 분석",
+    tags: ["모바일 게임", "매치3", "Dream Games", "비교 분석"]
+  },
+  {
+    title: "Royal Kingdom 메타게임 요소 분석",
+    desc: "Royal Kingdom의 메타 구조와 코어게임-과금 연결을 공식 소스 및 업계 분석 기반으로 정리한 심층 보고서.",
+    url: "reports/royalkingdom_meta_2026-03-12.html",
+    date: "2026-03-12",
+    category: "게임 분석",
+    tags: ["모바일 게임", "매치3", "메타게임", "수익화", "Dream Games"]
+  },
+  {
+    title: "Royal Kingdom 이벤트 시스템",
+    desc: "Royal Kingdom의 라이브 이벤트 구조, 유형별 분류, 이벤트-과금 연결 메커니즘을 분석한 프레젠테이션.",
+    url: "reports/royalkingdom_events.html",
+    date: "2026-03-12",
+    category: "게임 분석",
+    tags: ["모바일 게임", "라이브옵스", "이벤트", "Dream Games"]
+  }
+];
+
+// ──────────────────────────────────────────────
+//  Render logic
+// ──────────────────────────────────────────────
+const entriesEl = document.getElementById("entries");
+const emptyEl = document.getElementById("emptyState");
+const filtersEl = document.getElementById("filters");
+const searchInput = document.getElementById("searchInput");
+const resultCountEl = document.getElementById("resultCount");
+const searchArea = document.getElementById("searchArea");
+
+let activeCategory = null;
+
+// Build category filters
+function buildFilters() {
+  const categories = [...new Set(ENTRIES.map(e => e.category))];
+  let html = `<button class="filter-btn active" data-cat="">전체</button>`;
+  categories.forEach(c => {
+    html += `<button class="filter-btn" data-cat="${c}">${c}</button>`;
+  });
+  filtersEl.innerHTML = html;
+
+  filtersEl.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      filtersEl.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeCategory = btn.dataset.cat || null;
+      render();
+    });
+  });
+}
+
+function render() {
+  const query = searchInput.value.trim().toLowerCase();
+  let filtered = ENTRIES;
+
+  if (activeCategory) {
+    filtered = filtered.filter(e => e.category === activeCategory);
+  }
+
+  if (query) {
+    filtered = filtered.filter(e => {
+      const haystack = [e.title, e.desc, e.category, ...e.tags].join(" ").toLowerCase();
+      return query.split(/\s+/).every(q => haystack.includes(q));
+    });
+  }
+
+  // Sort by date descending
+  filtered.sort((a, b) => b.date.localeCompare(a.date));
+
+  if (filtered.length === 0) {
+    entriesEl.innerHTML = "";
+    emptyEl.style.display = "block";
+    resultCountEl.textContent = "";
+    return;
+  }
+
+  emptyEl.style.display = "none";
+  resultCountEl.textContent = `${filtered.length}건`;
+
+  entriesEl.innerHTML = filtered.map(e => `
+    <a class="entry-card" href="${e.url}">
+      <div class="title">${highlight(e.title, query)}</div>
+      <div class="desc">${highlight(e.desc, query)}</div>
+      <div class="entry-meta">
+        <span class="entry-category">${e.category}</span>
+        ${e.tags.map(t => `<span class="entry-tag">${t}</span>`).join("")}
+        <span class="entry-date">${e.date}</span>
+      </div>
+    </a>
+  `).join("");
+}
+
+function highlight(text, query) {
+  if (!query) return text;
+  const words = query.split(/\s+/).filter(Boolean);
+  let result = text;
+  words.forEach(w => {
+    const re = new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi");
+    result = result.replace(re, "<mark>$1</mark>");
+  });
+  return result;
+}
+
+// Sticky shadow on scroll
+window.addEventListener("scroll", () => {
+  searchArea.classList.toggle("scrolled", window.scrollY > 10);
+});
+
+searchInput.addEventListener("input", render);
+
+// Init
+buildFilters();
+render();
+</script>
+</body>
+</html>
