@@ -184,10 +184,35 @@
     padding: 0.25rem 0 0.5rem;
   }
 
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 2rem 0;
+    margin-top: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+  }
+  footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  footer a:hover {
+    color: var(--accent);
+  }
+  footer .footer-links {
+    display: flex;
+    gap: 1.2rem;
+  }
+
   @media (max-width: 600px) {
     header { padding: 2.5rem 0 1.5rem; }
     header h1 { font-size: 1.4rem; }
     .entry-card { padding: 1rem 0.8rem; }
+    footer { flex-direction: column; gap: 0.75rem; align-items: flex-start; }
   }
 </style>
 </head>
@@ -213,6 +238,14 @@
 
   <div class="entries" id="entries"></div>
   <div class="empty-state" id="emptyState">검색 결과가 없습니다.</div>
+
+  <footer>
+    <span>&copy; sinhyub</span>
+    <div class="footer-links">
+      <a href="https://github.com/sinhyub" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.linkedin.com/in/sinhyub" target="_blank" rel="noopener">LinkedIn</a>
+    </div>
+  </footer>
 </div>
 
 <script>
@@ -225,7 +258,7 @@ const ENTRIES = [
     title: "인간의 의사결정 기억용량 확장",
     desc: "의사결정에 필요한 기억 용량의 한계를 이해하고, 이를 확장하기 위한 프레임워크와 실천 방법을 정리한 문서.",
     url: "enhancers/human-memory-capacity.html",
-    date: "2026-03",
+    date: "2026-03-25",
     category: "사고 도구",
     tags: ["인지", "의사결정", "기억", "프레임워크"]
   },
@@ -233,7 +266,7 @@ const ENTRIES = [
     title: "엄밀함의 재배치 — Chad Fowler",
     desc: "Chad Fowler의 'Relocating Rigor' 번역. 소프트웨어 개발에서 엄밀함이 어디에 배치되어야 하는지에 대한 에세이.",
     url: "enhancers/relocating-rigor.html",
-    date: "2026-03",
+    date: "2026-03-24",
     category: "에세이",
     tags: ["소프트웨어", "엔지니어링", "번역", "Chad Fowler"]
   },
