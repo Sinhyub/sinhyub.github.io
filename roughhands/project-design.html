@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[기술개발] 모바일 온라인 게임 프로젝트 설계</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1a1a1a; background: #fff; line-height: 1.8;
+    max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem;
+  }
+  h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.3rem; font-weight: 700; margin: 2.5rem 0 0.75rem; border-bottom: 2px solid #2563eb; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  .meta { color: #888; font-size: 0.85rem; margin-bottom: 2.5rem; }
+  p { margin-bottom: 1.2rem; }
+  ul, ol { margin: 0.5rem 0 1.5rem 1.5rem; }
+  li { margin-bottom: 0.4rem; }
+  strong { font-weight: 600; }
+  em { font-style: italic; color: #555; }
+</style>
+</head>
+<body>
+
+<h1>[기술개발] 모바일 온라인 게임 프로젝트 설계</h1>
+<div class="meta">2016-03-25 · RoughHands 게임 제작기</div>
+
+<h2>모바일 '온라인'게임을 만들기 위한 고민과 프로젝트의 설계</h2>
+
+<p>크루세이더스 듀얼의 시작은 모바일 디바이스에서 즐기는 '온라인' 게임을 만드는 것에서 시작했다. '프로그래머'의 시선에서, 이 구현을 위해 다음과 같은 것들을 고민해야 했다.</p>
+
+<ol>
+  <li>다수의 사람들이 게임월드에서 상호작용하게 만들기</li>
+  <li>주요 모바일 디바이스(Android, iOS)에서 동작하게 만들기</li>
+  <li>작업 효율 향상을 위해, 서버는 MacOSX와 Windows모두에서 동작하게 만들기</li>
+  <li>하나의 월드(서버)에 4000명 이상의 사람들이 동시에 게임을 즐길 수 있게 만들기</li>
+  <li>안정적인 서비스를 만들기</li>
+  <li>개발 작업 효율을 향상시키기</li>
+</ol>
+
+<p>이 때, 앞선 2년동안 제작했던 프레임워크를 사용하여 빠르게 진행했다. <strong>flownet</strong>이라고 이름지은 이 프레임워크를 통해 <em>'5. 안정적서비스'</em>를 제외한 나머지를 모두 만족시킬 수 있었다.</p>
+
+<h3>flownet에 구현된 기능들</h3>
+<ul>
+  <li>TCP를 이용한 실시간 상호작용 구현 <em>Realtime RPC(Remote Procedure Call)</em></li>
+  <li>멀티 플랫폼 대응 : <em>Android / iOS / MacOSX / Windows</em></li>
+  <li>적극적인 멀티 스레드 사용 환경 : <em>Lock-Free Containers, Synchronization Mechanisms, Thread Controller</em></li>
+  <li>사용자 정의 프로토콜 및 그 컴파일러</li>
+  <li>데이터 베이스 사용 도구 <em>DB Connection Wrapper for PostgreSQL</em></li>
+  <li>기타 도구들: Async HTTP Client, CSV Parser, Resource Manager, Log System for Multithreaded Environment</li>
+</ul>
+
+<h2>flownet을 활용한 크루세이더 듀얼의 설계</h2>
+
+<p>크루세이더스 듀얼은 다수의 사람들이 상호작용할 수 있도록 서버-클라이언트 모델로 설계하였다. Client - GameServer - DBServer 세 개의 프로세스를 통해 게임이 구현된다.</p>
+
+<h3>구성 요소</h3>
+<ul>
+  <li><strong>flownet</strong> : 모바일 온라인 게임 개발을 위한 각종 도구를 구현한 라이브러리</li>
+  <li><strong>GameShared</strong> : Server와 Client에서 공용으로 사용하게 되는 게임 컨텐츠 기반을 구현한 공용 라이브러리. 예) Actor, Player, Stage, StoreData, SharedTypes</li>
+  <li><strong>GameClient</strong> : 게임 유저가 사용하게 될 게임 클라이언트. iOS/Android/Windows 어플리케이션. GameShared의 공용컨텐츠를 상속받아 컨텐츠를 구현. cocos2d-x를 이용해 시각적인 부분을 그려준다.</li>
+  <li><strong>GameServer</strong> : 게임 월드를 구동시키는 서버 어플리케이션. 다수의 게임 클라이언트로부터의 요청을 처리하고, 게임 내 객체의 상호작용을 관장한다. '실시간성' 및 '유저간 상호작용'을 위한 내부 설계가 특징.</li>
+  <li><strong>DBServer</strong> : 게임 내 주요 정보를 캐싱하고, 데이터베이스 IO 요청을 관리하는 서버. 게임 서버와 데이터베이스 사이에 위치하여, 게임 서버의 데이터 관리 요청을 처리한다.</li>
+</ul>
+
+<h3>구현 방식</h3>
+
+<p>예를들어 플레이어의 이동을 구현할 때, 이동은 클라이언트와 게임 서버 모두 동일한 규칙을 따른다. 하지만 서버에서는 이동이 발생할 때, 주변 플레이어들에게 해당 이동을 브로드캐스팅해주는 규칙이 추가된다. 이 때 이동은 GameShared라이브러리의 Player 클래스에 구현하고, 주변 유저에게 브로드캐스팅하는 기능은 GameServer어플리케이션의 ServerPlayer 클래스에 구현한다. 게임서버로부터 브로드캐스팅 된 이동 패킷을 받은 GameClient는 Player클래스의 동일한 이동 구현을 통해 이동을 진행하고, GameClient를 통해 이를 디스플레이하기 위한 구현을 추가한다.</p>
+
+<h2>정리</h2>
+
+<p>flownet을 사용하여 다수의 사람들이 상호작용하는 '온라인'게임을 구성하였고, 라이브러리를 활용한 프로젝트의 재사용을 통해 생산성과 코드 안정성을 높일 수 있었다.</p>
+
+<p>다음은 각 어플리케이션마다 특징이 되는 설계 목표와 그를 달성하기 위한 해결방법, 그 중 첫번째로 게임 서버의 이야기를 해 보려 한다.</p>
+
+<script src="../nav.js"></script>
+</body>
+</html>

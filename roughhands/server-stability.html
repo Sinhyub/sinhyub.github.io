@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>[기술개발] 안정성과 성능을 만족하는 게임 서버 설계 (2) : 높은 안정성 편</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #1a1a1a; background: #fff; line-height: 1.8;
+    max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem 5rem;
+  }
+  h1 { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; }
+  h2 { font-size: 1.3rem; font-weight: 700; margin: 2.5rem 0 0.75rem; border-bottom: 2px solid #2563eb; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+  .meta { color: #888; font-size: 0.85rem; margin-bottom: 2.5rem; }
+  p { margin-bottom: 1.2rem; }
+  ul, ol { margin: 0.5rem 0 1.5rem 1.5rem; }
+  li { margin-bottom: 0.4rem; }
+  strong { font-weight: 600; }
+  a { color: #2563eb; }
+</style>
+</head>
+<body>
+
+<h1>[기술개발] 안정성과 성능을 만족하는 게임 서버 설계 (2) : 높은 안정성 편</h1>
+<div class="meta">2016-04-24 · RoughHands 게임 제작기</div>
+
+<p><a href="server-performance.html">&larr; 이전: 안정성과 성능을 만족하는 게임 서버 설계 (1) : 높은 성능 편</a></p>
+
+<p>안정성 확보를 위해서는 크게 세 가지 측면의 고민이 있었다. 멀티스레드 환경에서의 안정성을 보장하기 위한 도구를 제공하는 것, 작업자(개발자)의 실수를 최소화 할 수 있는 도구(프로젝트 내/외부의 도구)를 제공하는 것, 그럼에도 발생할 실수를 조기에 발견할 수 있게 하는 것.</p>
+
+<p>안정성 확보는 프로젝트의 생산성과도 연관이 있는데, 1) 이러한 도구 자체가 반복작업을 줄여 절대적인 시간을 주는 점 2) '안정성'에 대한 고민을 덜어주는 구조 덕에 컨텐츠 제작에 집중할 수 있다는 점에서 그러하다.</p>
+
+<h2>동기화 객체를 사용한 기본적인 동기화 문제 해결</h2>
+
+<p>일반적으로 사용하는 동기화 객체들을 사용했다. 각 플랫폼 별로 지원하는 동기화 모델이 다르지만, 컨텐츠 작업시 플랫폼과 상관없이 동일한 코드를 사용할 수 있도록 각 클래스의 인터페이스를 한 번 더 신경써서 정의했다.</p>
+
+<ul>
+  <li><strong>Lock/TryLock:</strong> Windows환경에서는 Critical Section을, Linux/Mac 환경에서는 mutex를 사용</li>
+  <li><strong>Read/WriteLock:</strong> Windows환경에서는 Slim Reader Writer Lock을, Linux/Mac환경에서는 rwlock을 사용</li>
+  <li><strong>ScopedLock:</strong> C++의 생성자/소멸자를 이용해, 객체의 생명주기 동안 Lock을 획득하고, 소멸시 Lock을 반환하여 Scope와 Lock의 획득 구간을 일치시키는 간단한 헬퍼 클래스</li>
+</ul>
+
+<h2>락-프리 컨테이너의 '적절한' 이용</h2>
+
+<p>다수의 스레드에서 빈번하게 접근하게 되는 컨테이너의 경우, 락-프리 컨테이너를 사용하여 동기화 비용을 절감했다(컨텍스트 스위칭과 상호 봉쇄시간을 감소).</p>
+
+<ul>
+  <li>Mac환경에서는 OSFifoQueue를, Windows환경에서는 Interlocked-slist API를 활용했다.</li>
+  <li>안드로이드와 리눅스 환경에서는 미구현 상태로, 내부적으로 Lock을 활용해 컨테이너의 동기화만 보장하고 있다.</li>
+  <li>안드로이드에서는 싱글스레드를 주로 사용할 것이며, 리눅스환경의 서비스는 예정에 없기 때문에 이 구현은 To Do List에 남겨두었다.</li>
+</ul>
+
+<h2>GameTask를 통한 락-프리 컨텐츠 구현</h2>
+
+<h3>동작 방식</h3>
+<ol>
+  <li>유저가 플레이하는 공간을 '게임'으로 나누어 관리한다. (길드의 마을, 대전 매칭을 통한 대전장, 보스 레이드를 위한 레이드 던전 등)</li>
+  <li>'게임'내에서 동작하는 모든 활동은 공유자원에 접근하는 상호작용이며 이는 동기화를 맞춰야 한다. (플레이어의 이동, 플레이어의 공격, 몬스터 생성 등)</li>
+  <li>단위 timeslice에 '게임'을 처리하는 스레드가 단 하나임을 보장한다면, 상호작용에 있어서도 동기화를 맞출 필요가 없다.</li>
+  <li>하나의 '게임'에 접속하는 유저 수는 100명을 넘지 않는다. 이 숫자라면, 하나의 물리적 코어로 충분히 빠른 응답시간을 보장할 수 있다. (채널링 등의 방법으로 여러 개의 물리적 '게임'을 두어 해결)</li>
+</ol>
+
+<h3>GameTask Mutual Exclusive Processing의 장점</h3>
+<ul>
+  <li><strong>높은 성능을 얻을 수 있다.</strong> 멀티스레드를 적극적으로 사용하여 높은 성능을 얻을 수 있다.</li>
+  <li><strong>코드의 안정성이 확보된다.</strong> 게임 내 상호작용하는 객체는 모두 동기화 문제에서 배제된다.</li>
+  <li><strong>생산성이 향상된다.</strong> 코드의 안정성이 확보되고, 컨텐츠 작업 시 '안정성'에 대한 고민이 배제되어 생산성이 향상된다.</li>
+</ul>
+
+<h2>RPC 프로토콜 언어 및 컴파일러</h2>
+
+<p>게임을 구현함에 따라 수 많은 RPC프로토콜을 추가하게 되고, 해당하는 패킷의 직렬화 작업이 필요하다. 이는 충분히 자동화 가능한 반복작업이고, 이를 자동화 할 수 있도록 프로토콜을 정의하는 형식 언어와 컴파일러를 구현했다.</p>
+
+<ul>
+  <li><strong>RPC 프로토콜 언어:</strong> XML을 활용하여 간단히 구현했다. '새로운 언어를 만드는 것'이 아닌, '생산성 향상'이 목적이었기 때문에 메타언어를 쉽게 정의할 수 있는 XML을 사용했다.</li>
+  <li><strong>RPC 프로토콜 컴파일러:</strong> 정의된 RPC 프로토콜 언어로 기술된 프로토콜을 통해, 서버/클라이언트에서 사용하는 언어(C++)의 직렬화 코드를 생성해주는 프로토콜 컴파일러를 구현했다. 빠르게 작업할 수 있는 동적언어인 Python을 활용하여 컴파일러를 제작했다.</li>
+  <li><strong>코드 생성:</strong> 이전 프로젝트의 경험을 토대로, RPC의 설계에서부터 이를 고려했고, 잘 설계된 RPCPacket / RPCPacketParser / RPCPacketHandler / RPCPacketSender의 일반화된 클래스에서, 컴파일러를 통해 생성된 코드를 바로 사용할 수 있었다.</li>
+</ul>
+
+<p>이러한 RPC 프로토콜 언어 및 컴파일러를 통해, 반복된 작업에서 발생하는 작업자의 실수를 미연에 방지할 수 있고(특히 직렬화 과정에서는 조그만 실수만으로도 큰 버그를 만들 수 있다), 반복된 작업을 자동화하면서 생산성도 향상시킬 수 있었다.</p>
+
+<h2>정리</h2>
+
+<p>여기까지, '높은 안정성 편'을 마지막으로 크루세이더스 듀얼 서버의 설계에서 고민하고 시도한 바들을 거시적인 관점에서 이야기했다.</p>
+
+<p>이를 구현하면서 진행했던, 성능 평가와 테스트 결과도 함께 이야기할 수 있었다면 하는 아쉬움을 남기고 다음 포스트로 넘어가본다.</p>
+
+<p>다음은 기술 개발의 이야기에서 잠시 벗어나서, 모바일 게임다운 액션 RPG구현을 위한 크루세이더스 듀얼의 고민과 도전을 이야기해보려 한다.</p>
+
+<script src="../nav.js"></script>
+</body>
+</html>
